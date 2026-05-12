@@ -22,11 +22,6 @@ function getStatus(item) {
   const today = new Date(); today.setHours(0,0,0,0);
   const due   = new Date(item.dueDate); due.setHours(0,0,0,0);
   const diff  = Math.ceil((due - today) / 86400000);
-  if (item.category === "명함") {
-    if (diff < 0) return "expired";
-    if (diff <= 3) return "expiring_soon";
-    return "active";
-  }
   if (diff < 0) return "overdue";
   if (diff <= 3) return "due_soon";
   return "active";
@@ -95,8 +90,8 @@ const EMPTY = {
   securityFileId:null, securityFile:null, extensions:[], completedDate:null,
 };
 
-const ST_ALL  = ["전체","사용중","기한임박/만료임박","기한지연","기간만료","완료"];
-const ST_CARD = ["전체","사용중","만료임박","기간만료","완료"];
+const ST_ALL  = ["전체","사용중","기한임박","기한지연","완료"];
+const ST_CARD = ["전체","사용중","기한임박","기한지연","완료"];
 const ST_MAIL = ["전체","사용중","기한임박","기한지연","완료"];
 
 // ═══════════════════════════════════════════════════════════════
@@ -145,13 +140,12 @@ export default function App() {
 
   const stats = useMemo(()=>[
     { key:"ca", label:"명함 사용중",       color:C.info,    filter:{cat:"명함",     st:"active"}  },
-    { key:"ce", label:"명함 기간만료",     color:C.expired, filter:{cat:"명함",     st:"expired"} },
+    { key:"ce", label:"명함 기한지연",     color:C.danger,  filter:{cat:"명함",     st:"overdue"} },
     { key:"ma", label:"메일계정 사용중",   color:C.info,    filter:{cat:"메일계정", st:"active"}  },
     { key:"mo", label:"메일계정 기한지연", color:C.danger,  filter:{cat:"메일계정", st:"overdue"} },
   ].map(s=>({...s, value:enriched.filter(i=>{
     if(i.status==="completed") return false;
     if(i.category!==s.filter.cat) return false;
-    if(s.filter.st==="expired") return i.status==="expired"||i.status==="expiring_soon";
     if(s.filter.st==="overdue") return i.status==="overdue"||i.status==="due_soon";
     return i.status===s.filter.st;
   }).length})),[enriched]);
@@ -163,9 +157,8 @@ export default function App() {
     let r=enriched;
     if(catFilter!=="전체") r=r.filter(i=>i.category===catFilter);
     if(stFilter==="사용중") r=r.filter(i=>i.status==="active");
-    else if(stFilter==="기한임박"||stFilter==="만료임박"||stFilter==="기한임박/만료임박") r=r.filter(i=>i.status==="due_soon"||i.status==="expiring_soon");
+    else if(stFilter==="기한임박") r=r.filter(i=>i.status==="due_soon");
     else if(stFilter==="기한지연") r=r.filter(i=>i.status==="overdue");
-    else if(stFilter==="기간만료") r=r.filter(i=>i.status==="expired");
     else if(stFilter==="완료") r=r.filter(i=>i.status==="completed");
     else r=r.filter(i=>i.status!=="completed"); // 전체 탭에서도 완료 항목은 기본 숨김
     if(search){ const q=search.toLowerCase(); r=r.filter(i=>i.borrower?.includes(q)||i.requester?.includes(q)||i.itemName?.toLowerCase().includes(q)||i.department?.includes(q)||i.purpose?.includes(q)); }
@@ -282,7 +275,6 @@ export default function App() {
   function openDetail(stat){
     const its=enriched.filter(i=>{
       if(i.category!==stat.filter.cat) return false;
-      if(stat.filter.st==="expired") return i.status==="expired"||i.status==="expiring_soon";
       if(stat.filter.st==="overdue") return i.status==="overdue"||i.status==="due_soon";
       return i.status===stat.filter.st;
     });
@@ -1023,7 +1015,7 @@ export default function App() {
                 <button onClick={()=>setModal(null)} style={{display:"inline-flex",alignItems:"center",padding:"0 16px",height:36,borderRadius:8,border:`1px solid ${C.border}`,background:"transparent",color:C.textSub,cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>취소</button>
                 <button onClick={async()=>{
                   setModal(null);
-                  const result=await sendBulkNotifications(mailOverdue,(item)=>`${item.requester} ${item.requesterRank}, 안녕하세요. 인사기획팀입니다.\n이전에 신청하셨던 ${item.borrower} 메일 계정[${item.itemName}]의 사용 기한[${fmtDate(item.dueDate)}]이 지나 연락드립니다.\n따라서 계정 비활성화 처리를 하고자 하는데 진행해도 되는지에 대하여 회신 부탁드립니다.\n만약 연장이 필요할 경우, 연장 사유와 사용 기한을 적어 본 메일로 회신 주시기 바랍니다.\n감사합니다.`);
+                  const result=await sendBulkNotifications(mailOverdue,(item)=>`${item.requester}${item.requesterRank?" "+item.requesterRank:""}, 안녕하세요. 인사기획팀입니다.\n이전에 신청하셨던 ${item.borrower} 메일 계정[${item.itemName}]의 사용 기한[${fmtDate(item.dueDate)}]이 지나 연락드립니다.\n따라서 계정 비활성화 처리를 하고자 하는데 진행해도 되는지에 대하여 회신 부탁드립니다.\n만약 연장이 필요할 경우, 연장 사유와 사용 기한을 적어 본 메일로 회신 주시기 바랍니다.\n감사합니다.`);
                   if(result.fail===0) showToast(`${result.success}명에게 알림을 발송했습니다.`);
                   else showToast(`발송 완료 ${result.success}명 / 실패 ${result.fail}명`,"err");
                 }} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"0 20px",height:36,borderRadius:8,border:"none",background:C.danger,color:"#fff",cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:"inherit"}}>
@@ -1054,7 +1046,7 @@ export default function App() {
               </div>
               {(()=>{
                 const msgRef={current:null};
-                const defaultMsg=`${notifItem.requester} ${notifItem.requesterRank}, 안녕하세요. 인사기획팀입니다.\n이전에 신청하셨던 ${notifItem.borrower} 메일 계정[${notifItem.itemName}]의 사용 기한[${fmtDate(notifItem.dueDate)}]이 지나 연락드립니다.\n따라서 계정 비활성화 처리를 하고자 하는데 진행해도 되는지에 대하여 회신 부탁드립니다.\n만약 연장이 필요할 경우, 연장 사유와 사용 기한을 적어 본 메일로 회신 주시기 바랍니다.\n감사합니다.`;
+                const defaultMsg=`${notifItem.requester}${notifItem.requesterRank?" "+notifItem.requesterRank:""}, 안녕하세요. 인사기획팀입니다.\n이전에 신청하셨던 ${notifItem.borrower} 메일 계정[${notifItem.itemName}]의 사용 기한[${fmtDate(notifItem.dueDate)}]이 지나 연락드립니다.\n따라서 계정 비활성화 처리를 하고자 하는데 진행해도 되는지에 대하여 회신 부탁드립니다.\n만약 연장이 필요할 경우, 연장 사유와 사용 기한을 적어 본 메일로 회신 주시기 바랍니다.\n감사합니다.`;
                 return <>
                   <textarea ref={el=>msgRef.current=el} defaultValue={defaultMsg} rows={5} style={{...inp(),height:"auto",padding:"10px",resize:"vertical",lineHeight:1.7}}/>
                   <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:"1rem"}}>
@@ -1064,7 +1056,7 @@ export default function App() {
                       try{
                         await sendNotification(notifItem,msgRef.current?.value||defaultMsg);
                         showToast(`${notifItem.requester}님께 알림을 발송했습니다.`);
-                      }catch(e){showToast("발송 실패: "+e.message,"err");}
+                      }catch(e){showToast("발송 실패: "+(e?.text||e?.message||JSON.stringify(e)),"err");}
                     }} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"0 20px",height:36,borderRadius:8,border:"none",background:notifItem.requesterEmail?C.accent:"#ccc",color:"#fff",cursor:notifItem.requesterEmail?"pointer":"not-allowed",fontSize:13,fontWeight:600,fontFamily:"inherit"}}>
                       <Send size={13}/> 발송하기
                     </button>
