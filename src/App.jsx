@@ -95,46 +95,6 @@ const EMPTY = {
   securityFileId:null, securityFile:null, extensions:[], completedDate:null,
 };
 
-const SAMPLES = [
-  // 명함 – 외주 (기간만료)
-  { id:"s1", category:"명함", cardType:"외주", itemName:"외주 명함 200장",
-    requester:"이관우", requesterRank:"과장",  requesterDept:"총무팀",
-    borrower:"박지호",  borrowerRank:"주임",   department:"마케팅팀", contact:"010-5555-1234",
-    purpose:"외부 파트너사 미팅용", loanDate:"2026-03-01", dueDate:"2026-04-30",
-    notes:"행사 종료 후 잔여 명함 보관 중", securityFileId:null, extensions:[] },
-  // 명함 – 직원 (사용중)
-  { id:"s2", category:"명함", cardType:"직원", itemName:"직원 명함 200장",
-    requester:"정민서", requesterRank:"팀장",  requesterDept:"영업팀",
-    borrower:"김민준",  borrowerRank:"차장",   department:"영업팀",   contact:"010-1234-5678",
-    purpose:"직급 변경 재발급 (과장→차장)", loanDate:"2026-04-15", dueDate:"2026-06-30",
-    notes:"", securityFileId:null, extensions:[] },
-  // 메일계정 – 기한지연 (D+11), 연장 1회
-  { id:"s3", category:"메일계정", cardType:"", itemName:"vendor01@bimatrix.co.kr",
-    requester:"정도현", requesterRank:"대리", requesterDept:"총무팀",
-    borrower:"최유나",  borrowerRank:"주임",  department:"디자인팀", contact:"010-7777-8888",
-    purpose:"모바일 앱 UI 외주 프로젝트", loanDate:"2026-04-01", dueDate:"2026-04-25",
-    notes:"계약 종료 후 즉시 비활성화 요청", securityFileId:null,
-    extensions:[{ id:"e1", date:"2026-04-10", prevDueDate:"2026-04-15", newDueDate:"2026-04-25", reason:"납품 일정 지연으로 1차 연장" }] },
-  // 메일계정 – 기한임박 (D-2)
-  { id:"s4", category:"메일계정", cardType:"", itemName:"vendor02@bimatrix.co.kr",
-    requester:"이관우", requesterRank:"과장", requesterDept:"인사팀",
-    borrower:"이수진",  borrowerRank:"사원",  department:"인사팀",   contact:"010-9876-5432",
-    purpose:"하반기 채용 프로세스 운영", loanDate:"2026-04-20", dueDate:"2026-05-08",
-    notes:"", securityFileId:null, extensions:[] },
-  // 메일계정 – 사용중
-  { id:"s5", category:"메일계정", cardType:"", itemName:"vendor03@bimatrix.co.kr",
-    requester:"정도현", requesterRank:"대리", requesterDept:"총무팀",
-    borrower:"박현우",  borrowerRank:"대리",  department:"개발팀",   contact:"010-3333-9999",
-    purpose:"레거시 시스템 전환 개발 지원", loanDate:"2026-05-01", dueDate:"2026-07-31",
-    notes:"", securityFileId:null, extensions:[] },
-  // 메일계정 – 기한지연 (D+1)
-  { id:"s6", category:"메일계정", cardType:"", itemName:"vendor04@bimatrix.co.kr",
-    requester:"김민준", requesterRank:"차장", requesterDept:"영업팀",
-    borrower:"장미래",  borrowerRank:"사원",  department:"마케팅팀", contact:"010-2222-4444",
-    purpose:"SNS 콘텐츠 제작 외주", loanDate:"2026-03-15", dueDate:"2026-05-04",
-    notes:"", securityFileId:null, extensions:[] },
-];
-
 const ST_ALL  = ["전체","사용중","기한임박/만료임박","기한지연","기간만료","완료"];
 const ST_CARD = ["전체","사용중","만료임박","기간만료","완료"];
 const ST_MAIL = ["전체","사용중","기한임박","기한지연","완료"];
@@ -157,7 +117,8 @@ export default function App() {
   const [fileMap,     setFileMap]     = useState({});
   const [extForm,     setExtForm]     = useState(null);
   const [xlsxPreview, setXlsxPreview] = useState(null);
-  const [completeTarget, setCompleteTarget] = useState(null); // item to complete
+  const [completeTarget, setCompleteTarget] = useState(null);
+  const [selectedIds,    setSelectedIds]    = useState(new Set()); // item to complete
   const fileRef = useRef(null);
   const xlsxRef = useRef(null);
 
@@ -166,10 +127,10 @@ export default function App() {
     async function load(){
       try {
         const data = await fetchAll();
-        setItems(data.length ? data : SAMPLES);
+        setItems(data);
       } catch(e) {
-        console.error('DB 로드 실패, 샘플 데이터 사용:', e.message);
-        setItems(SAMPLES);
+        console.error('DB 로드 실패:', e.message);
+        setItems([]);
       }
       setLoaded(true);
     }
@@ -236,36 +197,63 @@ export default function App() {
     const file=e.target.files?.[0]; if(!file) return;
     xlsxRef.current.value="";
     try {
-      const ab    = await file.arrayBuffer();
-      const wb    = XLSX.read(ab,{type:"array",cellDates:true});
-      const ws    = wb.Sheets[wb.SheetNames[0]];
-      const rows  = XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:"YYYY-MM-DD"});
+      const ab   = await file.arrayBuffer();
+      const wb   = XLSX.read(ab,{type:"array",cellDates:true});
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:"YYYY-MM-DD"});
       if(rows.length<2){ showToast("데이터가 없습니다.","err"); return; }
 
+      // 헤더 행 찾기
       let headerIdx=0;
       for(let i=0;i<Math.min(5,rows.length);i++){
-        const r=(rows[i]||[]).join(" ");
+        const r=(rows[i]||[]).map(v=>v!=null?v+"":"").join(" ");
         if(r.includes("이름")||r.includes("신청")||r.includes("사용")||r.includes("메일")){ headerIdx=i; break; }
       }
-      const headers=(rows[headerIdx]||[]).map(h=>(h||"").toString().trim());
-      let subHeaders=null;
-      if(headerIdx+1<rows.length){ const s=rows[headerIdx+1].map(h=>(h||"").toString().trim()); if(s.filter(Boolean).length>=3) subHeaders=s; }
-      const eff=subHeaders||headers;
-      const fi=(...keys)=>{ for(const k of keys){ const i=eff.findIndex(h=>h.includes(k)); if(i>=0) return i; } return -1; };
-      const fi2=(...keys)=>{ let c=0; for(let i=0;i<eff.length;i++){ for(const k of keys){ if(eff[i].includes(k)){ c++; if(c===2) return i; break; }}} return -1; };
-      const cm={reqName:fi("이름","성명"),reqRank:fi("직급"),reqDept:fi("부서"),useName:fi2("이름","성명"),useRank:fi2("직급"),email:fi("메일","mail","Mail","이메일","email"),startDate:fi("시작"),endDate:fi("종료","만료"),purpose:fi("사용처","용도","목적")};
-      const ds=subHeaders?headerIdx+2:headerIdx+1;
+
+      // 헤더 정규화 (null/undefined 안전하게)
+      const headers=(rows[headerIdx]||[]).map(h=>h!=null?(h+"").trim():"");
+
+      // 컬럼 인덱스 찾기
+      const fi=(...keys)=>{
+        for(const k of keys){ const i=headers.findIndex(h=>h&&h.includes(k)); if(i>=0) return i; }
+        return -1;
+      };
+      const fi2=(...keys)=>{
+        let c=0;
+        for(let i=0;i<headers.length;i++){
+          if(!headers[i]) continue;
+          for(const k of keys){ if(headers[i].includes(k)){ c++; if(c===2) return i; break; } }
+        }
+        return -1;
+      };
+
+      const cm={
+        reqName:  fi("이름(신청","신청인이름") >= 0 ? fi("이름(신청","신청인이름") : fi("이름","성명"),
+        reqRank:  fi("직급(신청","신청인직급") >= 0 ? fi("직급(신청","신청인직급") : fi("직급"),
+        reqDept:  fi("부서(신청","신청인부서") >= 0 ? fi("부서(신청","신청인부서") : fi("부서"),
+        useName:  fi("이름(사용","사용인이름") >= 0 ? fi("이름(사용","사용인이름") : fi2("이름","성명"),
+        useRank:  fi("직급(사용","사용인직급") >= 0 ? fi("직급(사용","사용인직급") : fi2("직급"),
+        email:    fi("메일주소","메일","mail","Mail","이메일","email"),
+        startDate:fi("사용 시작일","시작일","시작"),
+        endDate:  fi("사용 종료일","종료일","종료","만료"),
+        purpose:  fi("사용처","용도","목적"),
+      };
+
       const preview=[];
-      for(let i=ds;i<rows.length;i++){
-        const r=rows[i]; if(!r||r.every(c=>!c)) continue;
+      for(let i=headerIdx+1;i<rows.length;i++){
+        const r=rows[i]; if(!r||r.every(c=>c==null||c==="")) continue;
         const g=ci=>ci>=0&&r[ci]!=null?(r[ci]+"").trim():"";
         const rawEmail=g(cm.email);
         const fullEmail=rawEmail?(rawEmail.includes("@")?rawEmail:rawEmail+DOMAIN):"";
-        preview.push({category:"메일계정",cardType:"",itemName:fullEmail,
+        preview.push({
+          category:"메일계정",cardType:"",itemName:fullEmail,
           requester:g(cm.reqName),requesterRank:g(cm.reqRank),requesterDept:g(cm.reqDept),
           borrower:g(cm.useName),borrowerRank:g(cm.useRank),department:"",contact:"",
-          purpose:g(cm.purpose),loanDate:parseXlsxDate(g(cm.startDate))||g(cm.startDate),
-          dueDate:parseXlsxDate(g(cm.endDate))||g(cm.endDate),notes:"",securityFileId:null,extensions:[]});
+          purpose:g(cm.purpose),
+          loanDate:parseXlsxDate(g(cm.startDate))||g(cm.startDate),
+          dueDate:parseXlsxDate(g(cm.endDate))||g(cm.endDate),
+          notes:"",securityFileId:null,extensions:[],completedDate:null,
+        });
       }
       if(!preview.length){ showToast("인식 가능한 데이터가 없습니다.","err"); return; }
       setXlsxPreview(preview); setModal("xlsxPreview");
@@ -335,6 +323,28 @@ export default function App() {
       showToast(completeTarget.category==="메일계정"?"삭제 완료 처리되었습니다.":"사용완료 처리되었습니다.");
     } catch(e){ showToast("처리 실패: "+e.message,"err"); }
     setModal(null); setCompleteTarget(null);
+  }
+  // ── 체크박스 선택 ─────────────────────────────────
+  function toggleSelect(id){ setSelectedIds(prev=>{ const n=new Set(prev); n.has(id)?n.delete(id):n.add(id); return n; }); }
+  function toggleSelectAll(){ setSelectedIds(prev=>prev.size===filtered.length?new Set():new Set(filtered.map(i=>i.id))); }
+  async function bulkComplete(){
+    const today=new Date().toISOString().slice(0,10);
+    const targets=items.filter(i=>selectedIds.has(i.id)&&!i.completedDate);
+    for(const item of targets){
+      const updated={...item,completedDate:today};
+      try{ await updateItem(updated); setItems(p=>p.map(i=>i.id===item.id?updated:i)); }catch(e){ console.error(e); }
+    }
+    showToast(`${targets.length}건 완료 처리되었습니다.`);
+    setSelectedIds(new Set());
+  }
+  async function bulkDelete(){
+    const targets=[...selectedIds];
+    for(const id of targets){
+      try{ await deleteItem(id); }catch(e){ console.error(e); }
+    }
+    setItems(p=>p.filter(i=>!selectedIds.has(i.id)));
+    showToast(`${targets.length}건 삭제되었습니다.`,"err");
+    setSelectedIds(new Set());
   }
   function sortBy(col){ if(sortCol===col)setSortDir(d=>d==="asc"?"desc":"asc"); else{setSortCol(col);setSortDir("asc");} }
 
@@ -411,12 +421,36 @@ export default function App() {
           </div>
         </div>
 
+        {/* 일괄 처리 바 */}
+        {selectedIds.size>0&&(
+          <div style={{background:C.accent,borderRadius:12,padding:"10px 16px",marginBottom:"0.75rem",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+            <span style={{fontSize:13,fontWeight:600,color:"#fff"}}>{selectedIds.size}개 선택됨</span>
+            <div style={{display:"flex",gap:8,marginLeft:"auto"}}>
+              <button onClick={bulkComplete} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"0 14px",height:32,borderRadius:7,border:"1px solid rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.15)",color:"#fff",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>
+                <CheckSquare size={13}/> 일괄 완료 처리
+              </button>
+              <button onClick={bulkDelete} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"0 14px",height:32,borderRadius:7,border:"1px solid rgba(255,100,100,0.4)",background:"rgba(255,100,100,0.2)",color:"#fca5a5",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>
+                <Trash2 size={13}/> 일괄 삭제
+              </button>
+              <button onClick={()=>setSelectedIds(new Set())} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"0 12px",height:32,borderRadius:7,border:"1px solid rgba(255,255,255,0.2)",background:"transparent",color:"rgba(255,255,255,0.6)",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>
+                <X size={13}/> 선택 해제
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Table */}
         <div style={{background:C.bg,borderRadius:12,border:`1px solid ${C.border}`,overflow:"hidden"}}>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:700}}>
               <thead>
                 <tr style={{borderBottom:`1px solid ${C.border}`,background:C.bgSub}}>
+                  <th style={{padding:"10px 14px",width:40}}>
+                    <input type="checkbox"
+                      checked={filtered.length>0&&selectedIds.size===filtered.length}
+                      onChange={toggleSelectAll}
+                      style={{cursor:"pointer",width:15,height:15}}/>
+                  </th>
                   <Th l="분류" c="category"/><Th l="신청자" c="requester"/><Th l="사용자" c="borrower"/>
                   <Th l="사용처" c="purpose"/><Th l="사용 종료일" c="dueDate"/><Th l="상태" c="status"/><Th l="" c=""/>
                 </tr>
@@ -428,14 +462,19 @@ export default function App() {
                     const isOver=item.status==="overdue"||item.status==="expired";
                     const isMailNoti=item.category==="메일계정"&&(item.status==="overdue"||item.status==="due_soon");
                     const isDone=item.status==="completed";
-                    const rowBg=isDone?(item.category==="명함"?"#fafaf9":"#f9fafb"):idx%2===1?C.bgSub:C.bg;
+                    const isSelected=selectedIds.has(item.id);
+                    const rowBg=isSelected?"#eef2ff":isDone?(item.category==="명함"?"#fafaf9":"#f9fafb"):idx%2===1?C.bgSub:C.bg;
                     const hasExt=(item.extensions?.length||0)>0;
                     const ctInfo=CARD_TYPES.find(t=>t.key===item.cardType);
                     return (
                       <tr key={item.id} style={{borderBottom:`1px solid ${C.border}`,background:rowBg,cursor:"pointer"}}
-                        onMouseEnter={e=>e.currentTarget.style.background=C.bgTer}
-                        onMouseLeave={e=>e.currentTarget.style.background=rowBg}
+                        onMouseEnter={e=>{if(!isSelected)e.currentTarget.style.background=C.bgTer;}}
+                        onMouseLeave={e=>{e.currentTarget.style.background=rowBg;}}
                         onDoubleClick={()=>openEdit(item)}>
+                        {/* 체크박스 */}
+                        <td style={{padding:"10px 14px",width:40}} onClick={e=>e.stopPropagation()}>
+                          <input type="checkbox" checked={isSelected} onChange={()=>toggleSelect(item.id)} style={{cursor:"pointer",width:15,height:15}}/>
+                        </td>
                         {/* 분류 */}
                         <td style={{padding:"10px 14px"}}>
                           <div style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12,color:C.textSub,fontWeight:500,whiteSpace:"nowrap"}}>
