@@ -7,11 +7,11 @@ const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID
 emailjs.init(PUBLIC_KEY)
 
 export async function sendNotification(item, message) {
-  const toEmail = item.borrowerEmail
-  if (!toEmail) throw new Error('수신자 이메일이 없습니다.')
+  const toEmail = item.requesterEmail
+  if (!toEmail) throw new Error('신청인 이메일이 없습니다.')
   return emailjs.send(SERVICE_ID, TEMPLATE_ID, {
     to_email:  toEmail,
-    to_name:   item.borrower,
+    to_name:   item.requester,
     category:  item.category,
     item_name: item.itemName,
     due_date:  item.dueDate,
