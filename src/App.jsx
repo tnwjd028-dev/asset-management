@@ -716,7 +716,8 @@ export default function App() {
                       ? <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:8,border:`1px solid ${C.border}`,background:C.bgSub}}>
                           <FileText size={14} style={{color:C.textSub,flexShrink:0}}/>
                           <span style={{fontSize:12,color:C.text,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fileMap[form.securityFileId].name}</span>
-                          <button onClick={()=>setForm(f=>({...f,securityFileId:null}))} style={{...iBtn(C.danger),width:22,height:22}}><X size={11}/></button>
+                          <button onClick={()=>downloadFile(form.securityFileId)} title="다운로드" style={{...iBtn(C.info),flexShrink:0}}><Download size={13}/></button>
+                          <button onClick={()=>setForm(f=>({...f,securityFileId:null}))} style={{...iBtn(C.danger),width:22,height:22,flexShrink:0}}><X size={11}/></button>
                         </div>
                       : <button onClick={()=>fileRef.current?.click()} style={{display:"inline-flex",alignItems:"center",gap:6,width:"100%",padding:"9px 12px",borderRadius:8,border:`1.5px dashed ${C.border}`,background:C.bgSub,color:C.textSub,cursor:"pointer",fontSize:13,fontFamily:"inherit",justifyContent:"center",boxSizing:"border-box"}}>
                           <Paperclip size={13}/> 파일 선택 (PDF, Word, 이미지 · 최대 4MB)
