@@ -253,9 +253,22 @@ export default function App() {
       setXlsxPreview(preview); setModal("xlsxPreview");
     } catch(err){ showToast("파일 읽기 실패: "+err.message,"err"); }
   }
-  function confirmXlsxImport(){
+  async function confirmXlsxImport(){
     const newItems=(xlsxPreview||[]).map(r=>({...EMPTY,...r,id:Date.now()+"_"+Math.random().toString(36).slice(2)}));
-    setItems(p=>[...p,...newItems]); showToast(`${newItems.length}건이 가져오기 되었습니다.`); setXlsxPreview(null); setModal(null);
+    let saved=0, failed=0;
+    for(const item of newItems){
+      try{
+        const created=await insertItem(item);
+        setItems(p=>[...p,created]);
+        saved++;
+      }catch(e){
+        console.error("저장 실패:",e);
+        failed++;
+      }
+    }
+    if(failed===0) showToast(`${saved}건이 저장되었습니다.`);
+    else showToast(`${saved}건 저장, ${failed}건 실패`,"err");
+    setXlsxPreview(null); setModal(null);
   }
 
   // ── 연장 처리 ──────────────────────────────────────
@@ -269,7 +282,17 @@ export default function App() {
   // ── CRUD ───────────────────────────────────────────
   function openAdd(){ setForm({...EMPTY,loanDate:new Date().toISOString().slice(0,10)}); setEditId(null); setExtForm(null); setModal("form"); }
   function openEdit(item){
-    setForm({...EMPTY,...item,extensions:item.extensions||[],emailPrefix:emailPrefix(item.itemName)});
+    // DB에 저장된 파일이 있으면 fileMap에 복원
+    let securityFileId = null;
+    if (item.securityFile) {
+      const fid = 'db_' + item.id;
+      setFileMap(prev => ({...prev, [fid]: item.securityFile}));
+      securityFileId = fid;
+    }
+    setForm({...EMPTY,...item, extensions:item.extensions||[],
+      emailPrefix:emailPrefix(item.itemName),
+      securityFileId: securityFileId,
+    });
     setEditId(item.id); setExtForm(null); setModal("form");
   }
   function openDetail(stat){
