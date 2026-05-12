@@ -231,6 +231,7 @@ export default function App() {
         reqName:  fi("이름(신청","신청인이름") >= 0 ? fi("이름(신청","신청인이름") : fi("이름","성명"),
         reqRank:  fi("직급(신청","신청인직급") >= 0 ? fi("직급(신청","신청인직급") : fi("직급"),
         reqDept:  fi("부서(신청","신청인부서") >= 0 ? fi("부서(신청","신청인부서") : fi("부서"),
+        reqEmail: fi("이메일(신청","신청인이메일","이메일","email","Email"),
         useName:  fi("이름(사용","사용인이름") >= 0 ? fi("이름(사용","사용인이름") : fi2("이름","성명"),
         useRank:  fi("직급(사용","사용인직급") >= 0 ? fi("직급(사용","사용인직급") : fi2("직급"),
         email:    fi("메일주소","메일","mail","Mail","이메일","email"),
@@ -247,8 +248,8 @@ export default function App() {
         const fullEmail=rawEmail?(rawEmail.includes("@")?rawEmail:rawEmail+DOMAIN):"";
         preview.push({
           category:"메일계정",cardType:"",itemName:fullEmail,
-          requester:g(cm.reqName),requesterRank:g(cm.reqRank),requesterDept:g(cm.reqDept),
-          borrower:g(cm.useName),borrowerRank:g(cm.useRank),department:"",contact:"",
+          requester:g(cm.reqName),requesterRank:g(cm.reqRank),requesterDept:g(cm.reqDept),requesterEmail:g(cm.reqEmail),
+          borrower:g(cm.useName),borrowerRank:g(cm.useRank),department:"",contact:"",borrowerEmail:"",
           purpose:g(cm.purpose),
           loanDate:parseXlsxDate(g(cm.startDate))||g(cm.startDate),
           dueDate:parseXlsxDate(g(cm.endDate))||g(cm.endDate),
@@ -804,12 +805,11 @@ export default function App() {
                 {/* 양식 다운로드 */}
                 <button onClick={async()=>{
                   try{
-                    const headers=["이름(신청인)","직급(신청인)","부서(신청인)","이름(사용인)","직급(사용인)","메일주소(아이디)","사용 시작일","사용 종료일","사용처"];
-                    const s1=["정도현","대리","총무팀","최유나","주임","vendor01","2026-05-01","2026-07-31","UI 외주 프로젝트"];
-                    const s2=["이관우","과장","인사팀","이수진","사원","vendor02","2026-05-10","2026-08-31","채용 프로세스 운영"];
+                    const headers=["이름(신청인)","직급(신청인)","부서(신청인)","이메일(신청인)","이름(사용인)","직급(사용인)","메일주소(아이디)","사용 시작일","사용 종료일","사용처"];
+                    const s1=["정도현","대리","총무팀","jdh@bimatrix.co.kr","최유나","주임","vendor01","2026-05-01","2026-07-31","UI 외주 프로젝트"];
+                    const s2=["이관우","과장","인사팀","lgw@bimatrix.co.kr","이수진","사원","vendor02","2026-05-10","2026-08-31","채용 프로세스 운영"];
                     const ws=XLSX.utils.aoa_to_sheet([headers,s1,s2]);
-                    ws["!cols"]=headers.map(()=>({wch:16}));
-                    // 헤더 행 스타일
+                    ws["!cols"]=headers.map(()=>({wch:18}));
                     const wb=XLSX.utils.book_new();
                     XLSX.utils.book_append_sheet(wb,ws,"메일계정양식");
                     XLSX.writeFile(wb,"메일계정_가져오기_양식.xlsx");
