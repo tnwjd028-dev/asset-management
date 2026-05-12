@@ -1,0 +1,32 @@
+name: Auto Notify Overdue
+
+on:
+  schedule:
+    # 매일 오전 9시 (KST) = UTC 00:00
+    - cron: '0 0 * * 1-5'  # 평일만 발송 (월~금)
+  workflow_dispatch:         # 수동 실행 버튼
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Supabase client
+        run: npm install @supabase/supabase-js
+
+      - name: Run auto notify
+        env:
+          VITE_SUPABASE_URL:        ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON:       ${{ secrets.VITE_SUPABASE_ANON }}
+          EMAILJS_SERVICE_ID:       ${{ secrets.VITE_EMAILJS_SERVICE_ID }}
+          EMAILJS_TEMPLATE_ID:      ${{ secrets.VITE_EMAILJS_TEMPLATE_ID }}
+          EMAILJS_PUBLIC_KEY:       ${{ secrets.VITE_EMAILJS_PUBLIC_KEY }}
+          EMAILJS_PRIVATE_KEY:      ${{ secrets.EMAILJS_PRIVATE_KEY }}
+        run: node --input-type=module < scripts/auto-notify.js
