@@ -19,9 +19,8 @@ export async function insertItem(item) {
     .from('rentals')
     .insert(itemToDbRow(item))
     .select()
-    .single()
   if (error) throw error
-  return dbRowToItem(data)
+  return dbRowToItem(data[0])
 }
 
 export async function updateItem(item) {
@@ -30,9 +29,8 @@ export async function updateItem(item) {
     .update(itemToDbRow(item))
     .eq('id', item.id)
     .select()
-    .single()
   if (error) throw error
-  return dbRowToItem(data)
+  return dbRowToItem(data[0])
 }
 
 export async function deleteItem(id) {
