@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import * as XLSX from 'xlsx';
 import { Bell, Plus, Edit2, Trash2, Search, Send, X, Mail, CreditCard, ChevronUp, ChevronDown, Paperclip, Download, FileText, Upload, RotateCcw, Clock, ChevronRight, User, Users, CheckSquare } from "lucide-react";
+import * as XLSX from 'xlsx';
 import { fetchAll, insertItem, updateItem, deleteItem } from './lib/supabase.js';
 import { sendNotification, sendBulkNotifications } from './lib/email.js';
 
