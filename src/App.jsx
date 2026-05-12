@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import * as XLSX from 'xlsx';
 import { Bell, Plus, Edit2, Trash2, Search, Send, X, Mail, CreditCard, ChevronUp, ChevronDown, Paperclip, Download, FileText, Upload, RotateCcw, Clock, ChevronRight, User, Users, CheckSquare } from "lucide-react";
 import { fetchAll, insertItem, updateItem, deleteItem } from './lib/supabase.js';
 import { sendNotification, sendBulkNotifications } from './lib/email.js';
@@ -235,7 +236,6 @@ export default function App() {
     const file=e.target.files?.[0]; if(!file) return;
     xlsxRef.current.value="";
     try {
-      const XLSX  = await import("https://esm.sh/xlsx@0.20.1");
       const ab    = await file.arrayBuffer();
       const wb    = XLSX.read(ab,{type:"array",cellDates:true});
       const ws    = wb.Sheets[wb.SheetNames[0]];
@@ -765,7 +765,6 @@ export default function App() {
                 {/* 양식 다운로드 */}
                 <button onClick={async()=>{
                   try{
-                    const XLSX=await import("https://esm.sh/xlsx@0.20.1");
                     const headers=["이름(신청인)","직급(신청인)","부서(신청인)","이름(사용인)","직급(사용인)","메일주소(아이디)","사용 시작일","사용 종료일","사용처"];
                     const s1=["정도현","대리","총무팀","최유나","주임","vendor01","2026-05-01","2026-07-31","UI 외주 프로젝트"];
                     const s2=["이관우","과장","인사팀","이수진","사원","vendor02","2026-05-10","2026-08-31","채용 프로세스 운영"];
