@@ -56,7 +56,7 @@ async function main() {
   console.log(`[${today}] 기한지연 자동 알림 시작`);
 
   // 기한지연 항목 조회
-  // 조건: 메일계정 + 완료 안됨 + 기한 지남 + 신청인 이메일 있음 + 오늘 아직 발송 안함
+  // 조건: 메일계정 + 완료 안됨 + 기한 지남 + 신청인 이메일 있음 + 한 번도 발송 안 함
   const { data: items, error } = await supabase
     .from('rentals')
     .select('*')
@@ -64,18 +64,18 @@ async function main() {
     .is('completed_date', null)
     .lt('due_date', today)
     .not('requester_email', 'is', null)
-    .neq('requester_email', '');
+    .neq('requester_email', '')
+    .is('last_notified', null);  // 최초 1회만
 
   if (error) {
     console.error('Supabase 조회 실패:', error.message);
     process.exit(1);
   }
 
-  // 오늘 이미 발송한 항목 제외
-  const targets = items.filter(i => i.last_notified !== today);
+  const targets = items;
 
   if (!targets.length) {
-    console.log('오늘 발송할 항목 없음 (이미 발송했거나 해당 없음)');
+    console.log('최초 발송할 항목 없음 (이미 발송했거나 해당 없음)');
     return;
   }
 
