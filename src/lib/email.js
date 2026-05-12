@@ -30,7 +30,8 @@ export async function sendBulkNotifications(items, buildMessage) {
       success++
     } catch (e) {
       fail++
-      errors.push(`${item.borrower}(${item.borrowerEmail || '이메일 없음'}): ${e.message}`)
+      const msg = e?.text || e?.message || JSON.stringify(e)
+      errors.push(`${item.requester}(${item.requesterEmail || '이메일 없음'}): ${msg}`)
     }
   }
   return { success, fail, errors }
