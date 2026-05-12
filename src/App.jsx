@@ -613,7 +613,7 @@ export default function App() {
                 {/* 신청인 정보 */}
                 <div style={secBox}>
                   <div style={secLbl}>신청인 정보</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
                     <div>
                       <label style={fldLbl}>이름 *</label>
                       <input value={form.requester} onChange={e=>setForm(f=>({...f,requester:e.target.value}))} placeholder="홍길동" style={inp()}/>
@@ -626,6 +626,10 @@ export default function App() {
                       <label style={fldLbl}>부서</label>
                       <input value={form.requesterDept} onChange={e=>setForm(f=>({...f,requesterDept:e.target.value}))} placeholder="총무팀" style={inp()}/>
                     </div>
+                  </div>
+                  <div>
+                    <label style={fldLbl}>알림 수신 이메일 <span style={{fontWeight:400,color:C.textTer}}>(기한지연 알림이 이 주소로 발송됩니다)</span></label>
+                    <input type="email" value={form.requesterEmail||""} onChange={e=>setForm(f=>({...f,requesterEmail:e.target.value}))} placeholder="example@bimatrix.co.kr" style={inp()}/>
                   </div>
                 </div>
 
@@ -665,10 +669,6 @@ export default function App() {
                       <input value={form.contact} onChange={e=>setForm(f=>({...f,contact:fmtPhone(e.target.value)}))} placeholder="010-0000-0000" maxLength={13} style={inp()}/>
                     </div>
                   )}
-                  <div>
-                    <label style={fldLbl}>알림 수신 이메일 <span style={{fontWeight:400,color:C.textTer}}>(알림 발송 시 사용)</span></label>
-                    <input type="email" value={form.borrowerEmail||""} onChange={e=>setForm(f=>({...f,borrowerEmail:e.target.value}))} placeholder="example@bimatrix.co.kr" style={inp()}/>
-                  </div>
                 </div>
 
                 {/* 사용 기간 */}
@@ -1047,9 +1047,9 @@ export default function App() {
                 {notifItem.purpose&&<div><span style={{color:C.textSub,fontSize:12,display:"inline-block",width:56}}>사용처</span>{notifItem.purpose}</div>}
                 <div><span style={{color:C.textSub,fontSize:12,display:"inline-block",width:56}}>종료일</span><span style={{color:C.danger,fontWeight:600}}>{fmtDate(notifItem.dueDate)}</span></div>
                 {(notifItem.extensions?.length||0)>0&&<div><span style={{color:C.textSub,fontSize:12,display:"inline-block",width:56}}>연장</span>{notifItem.extensions.length}회 연장됨</div>}
-                {notifItem.borrowerEmail
-                  ?<div><span style={{color:C.textSub,fontSize:12,display:"inline-block",width:56}}>수신메일</span><span style={{color:C.info}}>{notifItem.borrowerEmail}</span></div>
-                  :<div style={{color:C.danger,fontSize:12}}>⚠ 수신 이메일이 없습니다. 수정에서 이메일을 추가해 주세요.</div>
+                {notifItem.requesterEmail
+                  ?<div><span style={{color:C.textSub,fontSize:12,display:"inline-block",width:56}}>수신메일</span><span style={{color:C.info}}>{notifItem.requesterEmail}</span></div>
+                  :<div style={{color:C.danger,fontSize:12}}>⚠ 신청인 이메일이 없습니다. 수정에서 이메일을 추가해 주세요.</div>
                 }
               </div>
               {(()=>{
@@ -1059,13 +1059,13 @@ export default function App() {
                   <textarea ref={el=>msgRef.current=el} defaultValue={defaultMsg} rows={5} style={{...inp(),height:"auto",padding:"10px",resize:"vertical",lineHeight:1.7}}/>
                   <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:"1rem"}}>
                     <button onClick={()=>setModal(null)} style={{display:"inline-flex",alignItems:"center",padding:"0 16px",height:36,borderRadius:8,border:`1px solid ${C.border}`,background:"transparent",color:C.textSub,cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>취소</button>
-                    <button disabled={!notifItem.borrowerEmail} onClick={async()=>{
+                    <button disabled={!notifItem.requesterEmail} onClick={async()=>{
                       setModal(null);
                       try{
                         await sendNotification(notifItem,msgRef.current?.value||defaultMsg);
-                        showToast(`${notifItem.borrower}님께 알림을 발송했습니다.`);
+                        showToast(`${notifItem.requester}님께 알림을 발송했습니다.`);
                       }catch(e){showToast("발송 실패: "+e.message,"err");}
-                    }} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"0 20px",height:36,borderRadius:8,border:"none",background:notifItem.borrowerEmail?C.accent:"#ccc",color:"#fff",cursor:notifItem.borrowerEmail?"pointer":"not-allowed",fontSize:13,fontWeight:600,fontFamily:"inherit"}}>
+                    }} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"0 20px",height:36,borderRadius:8,border:"none",background:notifItem.requesterEmail?C.accent:"#ccc",color:"#fff",cursor:notifItem.requesterEmail?"pointer":"not-allowed",fontSize:13,fontWeight:600,fontFamily:"inherit"}}>
                       <Send size={13}/> 발송하기
                     </button>
                   </div>
