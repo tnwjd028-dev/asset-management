@@ -18,9 +18,6 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install Supabase client
-        run: npm install @supabase/supabase-js
-
       - name: Run auto notify
         env:
           VITE_SUPABASE_URL:        ${{ secrets.VITE_SUPABASE_URL }}
