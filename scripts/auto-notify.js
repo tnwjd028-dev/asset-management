@@ -1,7 +1,8 @@
 // scripts/auto-notify.js
 // GitHub Actions에서 매일 자동 실행되는 기한지연 메일 발송 스크립트
 
-const SUPABASE_URL  = process.env.VITE_SUPABASE_URL;
+const SUPABASE_URL  = (process.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
+const SUPABASE_BASE = SUPABASE_URL.startsWith('http') ? SUPABASE_URL : `https://${SUPABASE_URL}`;
 const SUPABASE_ANON = process.env.VITE_SUPABASE_ANON;
 const today = new Date().toISOString().slice(0, 10);
 
