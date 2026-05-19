@@ -16,7 +16,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Install Supabase client
         run: npm install @supabase/supabase-js
@@ -29,4 +29,4 @@ jobs:
           EMAILJS_TEMPLATE_ID:      ${{ secrets.VITE_EMAILJS_TEMPLATE_ID }}
           EMAILJS_PUBLIC_KEY:       ${{ secrets.VITE_EMAILJS_PUBLIC_KEY }}
           EMAILJS_PRIVATE_KEY:      ${{ secrets.EMAILJS_PRIVATE_KEY }}
-        run: node --input-type=module < scripts/auto-notify.js
+        run: node scripts/auto-notify.js
